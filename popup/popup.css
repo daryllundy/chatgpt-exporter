@@ -39,6 +39,18 @@ h2 {
   background: #fff;
 }
 
+.section-resume {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.section-resume p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #92400e;
+}
+
 label {
   display: block;
   font-size: 13px;
@@ -51,9 +63,14 @@ input[type="text"] {
   margin: 6px 0;
 }
 
+.btn-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
 .primary,
 .secondary {
-  width: 100%;
   border: 0;
   border-radius: 8px;
   padding: 9px 10px;
@@ -61,8 +78,11 @@ input[type="text"] {
 }
 
 .primary {
+  width: 100%;
   background: #111827;
   color: #fff;
+  font-size: 14px;
+  margin-bottom: 2px;
 }
 
 .secondary {
@@ -70,11 +90,30 @@ input[type="text"] {
   color: #1a1c1f;
 }
 
+.small {
+  padding: 6px 10px;
+  font-size: 12px;
+  flex: 1;
+}
+
 .icon-button {
   border: 0;
   background: transparent;
   font-size: 16px;
   cursor: pointer;
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.progress p {
+  margin: 0;
+  font-size: 12px;
+  flex: 1;
 }
 
 .status {

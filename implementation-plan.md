@@ -70,21 +70,21 @@ Deliverable:
 - End-to-end export produces a valid ZIP that opens correctly offline.
 
 ### 6. Resume + Control Flow (Milestone: robust long-run behavior)
-- [ ] Define `resumeState` schema with versioning.
-- [ ] Checkpoint after each conversation artifact set.
-- [ ] Resume prompt and flow when an unfinished export exists.
-- [ ] Cancel flow that safely clears state and stops workers.
-- [ ] Partial failure handling and summary report file in ZIP.
+- [x] Define `resumeState` schema with versioning.
+- [x] Checkpoint after each conversation artifact set.
+- [x] Resume prompt and flow when an unfinished export exists.
+- [x] Cancel flow that safely clears state and stops workers.
+- [x] Partial failure handling and summary report file in ZIP.
 
 Deliverable:
 - Interrupted runs recover without duplicated or missing conversations.
 
 ### 7. Popup UX (Milestone: usable v1 interface)
-- [ ] Scope controls: current / selected / full.
-- [ ] Format multi-select controls.
-- [ ] Export button enable/disable logic.
-- [ ] Live progress text with ETA and counts.
-- [ ] Settings panel: naming template, default formats, reset preferences.
+- [x] Scope controls: current / selected / full.
+- [x] Format multi-select controls.
+- [x] Export button enable/disable logic.
+- [x] Live progress text with ETA and counts.
+- [x] Settings panel: naming template, default formats, reset preferences.
 
 Deliverable:
 - User can configure and run exports entirely from popup + in-page selector.

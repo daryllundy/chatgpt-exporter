@@ -79,6 +79,8 @@ async function executeExport(payload) {
     // 3. Fetch + normalize each conversation ────────────────────────────────
     /** @type {import("./lib/exporter/packager.js").ConvExportRecord[]} */
     const records = [];
+    /** @type {import("./lib/exporter/packager.js").FailureRecord[]} */
+    const failures = [];
     const startTime = Date.now();
 
     for (let i = 0; i < metas.length; i++) {
@@ -98,10 +100,16 @@ async function executeExport(payload) {
         void chrome.runtime.sendMessage({
           type: MsgType.EXPORT_PROGRESS,
           payload: { phase: "exporting", completed: i + 1, total,
-            etaSeconds: estimateEta(startTime, i + 1, total) }
+            etaSeconds: estimateEta(startTime, i + 1, total),
+            lastCompletedId: meta.id }
         });
       } catch (err) {
         logger.error(`Failed to export conversation ${meta.id}`, err);
+        failures.push({
+          id:    meta.id,
+          title: meta.title || "Untitled Chat",
+          error: err instanceof Error ? err.message : String(err)
+        });
       }
 
       sendProgress({
@@ -120,6 +128,7 @@ async function executeExport(payload) {
       records,
       payload.formats,
       prefs.namingTemplate || "{date}_{title}",
+      failures,
       (done, tot) => sendProgress({ phase: "packaging", completed: done, total: tot, etaSeconds: null })
     );
 

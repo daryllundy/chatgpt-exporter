@@ -13,6 +13,15 @@
         <button id="settings-toggle" class="icon-button" aria-label="Settings">⚙</button>
       </header>
 
+      <!-- Resume Banner (hidden by default) -->
+      <section id="resume-banner" class="section section-resume" hidden>
+        <p id="resume-text">A previous export was interrupted.</p>
+        <div class="btn-row">
+          <button id="resume-btn" class="primary small">Resume</button>
+          <button id="discard-btn" class="secondary small">Start fresh</button>
+        </div>
+      </section>
+
       <section class="section">
         <h2>Export Scope</h2>
         <label><input type="radio" name="scope" value="current" checked /> Current Chat</label>
@@ -29,7 +38,7 @@
 
       <section id="progress" class="section progress" hidden>
         <p id="progress-text">Exporting...</p>
-        <button id="cancel-export" class="secondary">Cancel</button>
+        <button id="cancel-export" class="secondary small">Cancel</button>
       </section>
 
       <button id="export-btn" class="primary">Export &amp; Download ZIP</button>
@@ -38,7 +47,10 @@
         <h2>Settings</h2>
         <label for="naming-template">Naming template</label>
         <input id="naming-template" type="text" value="{date}_{title}" />
-        <button id="save-settings" class="secondary">Save Settings</button>
+        <div class="btn-row">
+          <button id="save-settings" class="secondary small">Save Settings</button>
+          <button id="reset-settings" class="secondary small">Reset</button>
+        </div>
       </section>
 
       <p id="status" class="status" aria-live="polite"></p>
