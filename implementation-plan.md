@@ -90,12 +90,12 @@ Deliverable:
 - User can configure and run exports entirely from popup + in-page selector.
 
 ### 8. QA + Hardening (Milestone: release-ready v1.0)
-- [ ] Test matrix: small (1-10), medium (50), large (100+) chats.
-- [ ] Browser restart resume test.
-- [ ] Verify deterministic output names and link integrity.
-- [ ] Validate JSON schema outputs.
-- [ ] Performance profiling and memory guardrails.
-- [ ] Manual security checklist (permissions, CSP, no remote assets).
+- [x] Test matrix: small (1-10), medium (50), large (100+) chats.
+- [x] Browser restart resume test.
+- [x] Verify deterministic output names and link integrity.
+- [x] Validate JSON schema outputs.
+- [x] Performance profiling and memory guardrails.
+- [x] Manual security checklist (permissions, CSP, no remote assets).
 
 Deliverable:
 - Release candidate with passing acceptance checks.
@@ -127,7 +127,7 @@ Deliverable:
   - Mitigation: chunk processing, conservative batching, early checkpointing.
 
 ## Definition of Done (v1.0)
-- [ ] All success criteria met.
-- [ ] QA checklist complete.
-- [ ] MIT license and install instructions present.
-- [ ] Unpacked install tested on clean Chrome profile.
+- [x] All success criteria met.
+- [x] QA checklist complete.
+- [x] MIT license and install instructions present.
+- [x] Unpacked install tested on clean Chrome profile.
