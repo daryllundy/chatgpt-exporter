@@ -32,3 +32,4 @@ tmp/
 # Extension packaging artifacts
 *.crx
 *.pem
+*.zip
