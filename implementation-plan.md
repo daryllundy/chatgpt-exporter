@@ -56,15 +56,15 @@ Deliverable:
 - For one conversation, all selected formats are generated with deterministic file paths.
 
 ### 5. Assets + ZIP Packaging (Milestone: downloadable bundle)
-- [ ] Implement image extraction and naming (`{conv-slug}_{index}.png`).
-- [ ] Store image files for Markdown/JSON.
-- [ ] Embed Base64 images in HTML output.
-- [ ] Build `index.html` linking all chat artifacts.
-- [ ] Package ZIP with folder layout:
+- [x] Implement image extraction and naming (`{conv-slug}_{index}.png`).
+- [x] Store image files for Markdown/JSON.
+- [x] Embed Base64 images in HTML output.
+- [x] Build `index.html` linking all chat artifacts.
+- [x] Package ZIP with folder layout:
   - `/chats`
   - `/custom-gpts/<name>`
   - `/images`
-- [ ] Trigger download with `chrome.downloads`.
+- [x] Trigger download with `chrome.downloads`.
 
 Deliverable:
 - End-to-end export produces a valid ZIP that opens correctly offline.
