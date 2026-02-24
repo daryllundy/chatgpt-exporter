@@ -19,10 +19,10 @@ Ship v1.0 of a Chrome MV3 extension that exports ChatGPT conversations from `cha
 ## Workstreams
 
 ### 1. Foundation (Milestone: runnable extension shell)
-- [ ] Finalize manifest and permission model.
-- [ ] Wire popup <-> service worker <-> content script messaging.
-- [ ] Add typed message contract (command and progress event names).
-- [ ] Add extension-local logging helpers with debug toggle.
+- [x] Finalize manifest and permission model.
+- [x] Wire popup <-> service worker <-> content script messaging.
+- [x] Add typed message contract (command and progress event names).
+- [x] Add extension-local logging helpers with debug toggle.
 
 Deliverable:
 - Extension loads unpacked, popup opens, health check message roundtrip succeeds.
