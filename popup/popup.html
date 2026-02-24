@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChatGPT Exporter</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header class="panel-header">
+        <h1>ChatGPT Exporter</h1>
+        <button id="settings-toggle" class="icon-button" aria-label="Settings">⚙</button>
+      </header>
+
+      <section class="section">
+        <h2>Export Scope</h2>
+        <label><input type="radio" name="scope" value="current" checked /> Current Chat</label>
+        <label><input type="radio" name="scope" value="selected" /> Selected Chats</label>
+        <label><input type="radio" name="scope" value="full" /> Full Account Dump</label>
+      </section>
+
+      <section class="section">
+        <h2>Formats</h2>
+        <label><input type="checkbox" name="format" value="html" checked /> HTML</label>
+        <label><input type="checkbox" name="format" value="markdown" checked /> Markdown</label>
+        <label><input type="checkbox" name="format" value="json" /> JSON</label>
+      </section>
+
+      <section id="progress" class="section progress" hidden>
+        <p id="progress-text">Exporting...</p>
+        <button id="cancel-export" class="secondary">Cancel</button>
+      </section>
+
+      <button id="export-btn" class="primary">Export &amp; Download ZIP</button>
+
+      <section id="settings" class="section" hidden>
+        <h2>Settings</h2>
+        <label for="naming-template">Naming template</label>
+        <input id="naming-template" type="text" value="{date}_{title}" />
+        <button id="save-settings" class="secondary">Save Settings</button>
+      </section>
+
+      <p id="status" class="status" aria-live="polite"></p>
+    </main>
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

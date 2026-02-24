@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Conversation Exporter",
+  "version": "0.1.0",
+  "description": "Export ChatGPT conversations to HTML, Markdown, and JSON ZIP archives.",
+  "minimum_chrome_version": "114",
+  "action": {
+    "default_title": "ChatGPT Exporter",
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "service_worker.js",
+    "type": "module"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "content_script.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "lib/highlight.min.js"
+      ],
+      "matches": [
+        "https://chatgpt.com/*"
+      ]
+    }
+  ]
+}

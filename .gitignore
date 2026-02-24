@@ -1,0 +1,34 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node / JS
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build artifacts
+dist/
+build/
+out/
+coverage/
+.tmp/
+tmp/
+.cache/
+
+# Env and local settings
+.env
+.env.*
+*.local
+
+# Extension packaging artifacts
+*.crx
+*.pem
