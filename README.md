@@ -103,6 +103,12 @@ Run smoke tests for naming + exporters:
 node tests/smoke-exporters.mjs
 ```
 
+Run extension security/policy checks:
+
+```bash
+./tests/security-checks.sh
+```
+
 To enable verbose debug logging, open the DevTools console for the service worker or content script and run:
 
 ```javascript
