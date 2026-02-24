@@ -17,6 +17,8 @@ const elements = {
   discardBtn:    document.getElementById("discard-btn"),
 };
 
+let isExportRunning = false;
+
 init().catch((error) => {
   setStatus(error instanceof Error ? error.message : "Initialization failed");
 });
@@ -39,6 +41,7 @@ async function init() {
   await loadPreferences();
   await pingServiceWorker();
   await checkResumeState();
+  updateExportButtonState();
   setStatus("Ready");
 }
 
@@ -73,14 +76,22 @@ function wireEvents() {
     void discardResume();
   });
 
+  for (const radio of document.querySelectorAll('input[name="scope"]')) {
+    radio.addEventListener("change", updateExportButtonState);
+  }
+  for (const checkbox of document.querySelectorAll('input[name="format"]')) {
+    checkbox.addEventListener("change", updateExportButtonState);
+  }
+
   chrome.runtime.onMessage.addListener((message) => {
     if (!message || message.type !== MsgType.EXPORT_PROGRESS) {
       return;
     }
     const payload = message.payload || {};
     if (payload.phase === "done" || payload.phase === "error") {
+      isExportRunning = false;
       elements.progress.hidden = true;
-      elements.exportBtn.disabled = false;
+      updateExportButtonState();
       setStatus(payload.phase === "done"
         ? "Export complete! Check your downloads."
         : `Error: ${payload.message || "Unknown error"}`);
@@ -99,10 +110,12 @@ async function startExport(resumePayload = null) {
 
   if (!scope || formats.length === 0) {
     setStatus("Select a scope and at least one format.");
+    updateExportButtonState();
     return;
   }
 
-  elements.exportBtn.disabled = true;
+  isExportRunning = true;
+  updateExportButtonState();
   elements.resumeBanner.hidden = true;
   elements.progress.hidden = false;
   elements.progressText.textContent = "Starting export...";
@@ -119,15 +132,17 @@ async function startExport(resumePayload = null) {
     setStatus("Export started.");
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Export request failed");
-    elements.exportBtn.disabled = false;
+    isExportRunning = false;
+    updateExportButtonState();
     elements.progress.hidden = true;
   }
 }
 
 async function cancelExport() {
   const response = await chrome.runtime.sendMessage({ type: MsgType.CANCEL_EXPORT });
+  isExportRunning = false;
+  updateExportButtonState();
   elements.progress.hidden = true;
-  elements.exportBtn.disabled = false;
   setStatus(response?.ok ? "Export cancelled." : "Cancel failed.");
 }
 
@@ -233,4 +248,10 @@ function capitalize(str) {
 
 function setStatus(text) {
   elements.status.textContent = text;
+}
+
+function updateExportButtonState() {
+  const hasScope = Boolean(getSelectedScope());
+  const hasFormats = getSelectedFormats().length > 0;
+  elements.exportBtn.disabled = isExportRunning || !hasScope || !hasFormats;
 }
