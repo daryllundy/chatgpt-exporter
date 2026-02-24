@@ -28,10 +28,10 @@ Deliverable:
 - Extension loads unpacked, popup opens, health check message roundtrip succeeds.
 
 ### 2. Conversation Discovery (Milestone: stable IDs list)
-- [ ] Implement current-chat discovery.
-- [ ] Implement selectable chat list extraction for manual selection mode.
-- [ ] Implement full account enumeration with pagination/scroll handling.
-- [ ] Normalize conversation metadata (`id`, `title`, `updatedAt`, `customGptName`).
+- [x] Implement current-chat discovery.
+- [x] Implement selectable chat list extraction for manual selection mode.
+- [x] Implement full account enumeration with pagination/scroll handling.
+- [x] Normalize conversation metadata (`id`, `title`, `updatedAt`, `customGptName`).
 
 Deliverable:
 - Service worker receives deterministic conversation ID list for each export scope.

@@ -1,5 +1,6 @@
 import { MsgType } from "./lib/messages.js";
 import { logger } from "./lib/logger.js";
+import { discoverConversations, promptConversationSelection } from "./lib/discovery.js";
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message !== "object") {
@@ -27,87 +28,57 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 /**
  * Entry point for the export runner in the page context.
- * Discovers conversations, extracts data, and returns artifacts to service worker.
  * @param {import("./lib/messages.js").StartExportPayload} payload
  */
 async function executeExport(payload) {
   try {
     sendProgress({ phase: "init", completed: 0, total: 0, etaSeconds: null });
-    const ids = await discoverConversations(payload.scope, payload.conversationIds);
-    logger.info(`Discovered ${ids.length} conversation(s)`);
-    sendProgress({ phase: "discovering", completed: 0, total: ids.length, etaSeconds: null });
-    await chrome.runtime.sendMessage({
+
+    // For "selected" scope, show the in-page selector if no IDs were provided.
+    let explicitIds = payload.conversationIds;
+    if (payload.scope === "selected" && (!explicitIds || explicitIds.length === 0)) {
+      explicitIds = await promptConversationSelection();
+      if (explicitIds.length === 0) {
+        sendProgress({ phase: "done", completed: 0, total: 0, etaSeconds: 0,
+          message: "No conversations selected." });
+        return;
+      }
+    }
+
+    const conversations = await discoverConversations(
+      payload.scope,
+      explicitIds,
+      (ids) => sendProgress({ phase: "discovering", completed: ids.length, total: ids.length, etaSeconds: null })
+    );
+
+    logger.info(`Discovered ${conversations.length} conversation(s)`);
+    sendProgress({ phase: "discovering", completed: 0, total: conversations.length, etaSeconds: null });
+
+    // Notify service worker of full ID list so resume state can be persisted
+    void chrome.runtime.sendMessage({
       type: MsgType.EXPORT_PROGRESS,
-      payload: { phase: "discovering", completed: 0, total: ids.length, etaSeconds: null }
+      payload: {
+        phase: "discovering",
+        completed: 0,
+        total: conversations.length,
+        etaSeconds: null,
+        allIds: conversations.map((c) => c.id)
+      }
     });
-    // Full extraction and packaging are handled in subsequent workstreams.
-    // Signal completion (placeholder until Workstream 5 wires ZIP).
-    sendProgress({ phase: "done", completed: ids.length, total: ids.length, etaSeconds: 0 });
+
+    // Full extraction and ZIP are completed in Workstreams 3–5.
+    // Placeholder completion signal:
+    sendProgress({ phase: "done", completed: conversations.length, total: conversations.length, etaSeconds: 0 });
   } catch (err) {
     logger.error("executeExport failed", err);
-    sendProgress({ phase: "error", completed: 0, total: 0, etaSeconds: null, message: err.message });
+    sendProgress({
+      phase: "error",
+      completed: 0,
+      total: 0,
+      etaSeconds: null,
+      message: err instanceof Error ? err.message : String(err)
+    });
   }
-}
-
-/**
- * Discover conversation IDs based on export scope.
- * Implemented fully in Workstream 2; this shell satisfies the messaging contract.
- * @param {import("./lib/messages.js").ExportScope} scope
- * @param {string[]} [explicitIds]
- * @returns {Promise<string[]>}
- */
-async function discoverConversations(scope, explicitIds) {
-  if (scope === "selected" && Array.isArray(explicitIds)) {
-    return explicitIds;
-  }
-  if (scope === "current") {
-    return discoverCurrentChat();
-  }
-  if (scope === "full") {
-    return discoverAllConversations();
-  }
-  return [];
-}
-
-/**
- * @returns {Promise<string[]>}  single-element array with the current chat ID
- */
-async function discoverCurrentChat() {
-  // Current chat ID appears in the URL: /c/<id>
-  const match = window.location.pathname.match(/\/c\/([a-f0-9-]+)/);
-  if (match) {
-    return [match[1]];
-  }
-  logger.warn("Could not determine current chat ID from URL");
-  return [];
-}
-
-/**
- * Enumerate all conversation IDs by calling ChatGPT's internal history API.
- * Pagination is handled via limit/offset.
- * @returns {Promise<string[]>}
- */
-async function discoverAllConversations() {
-  const ids = [];
-  let offset = 0;
-  const limit = 100;
-
-  while (true) {
-    const url = `https://chatgpt.com/backend-api/conversations?offset=${offset}&limit=${limit}&order=updated`;
-    const resp = await fetch(url, { credentials: "include" });
-    if (!resp.ok) {
-      logger.error("History API error", resp.status);
-      break;
-    }
-    const data = await resp.json();
-    const items = Array.isArray(data?.items) ? data.items : [];
-    for (const item of items) {
-      if (item?.id) ids.push(item.id);
-    }
-    if (items.length < limit) break;
-    offset += limit;
-  }
-  return ids;
 }
 
 /**
