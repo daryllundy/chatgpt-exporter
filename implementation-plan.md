@@ -46,11 +46,11 @@ Deliverable:
 - Each conversation transforms into a single canonical object used by all exporters.
 
 ### 4. Exporters (Milestone: artifact generation)
-- [ ] JSON exporter aligned with PRD schema.
-- [ ] Markdown exporter (GFM fences, links, image paths).
-- [ ] HTML exporter (inline styles, syntax-highlight ready blocks, print-friendly markup).
-- [ ] Shared slug + file naming utility (`{date}_{title}`, `{id}_{title}` templates).
-- [ ] Collision handling for duplicate titles.
+- [x] JSON exporter aligned with PRD schema.
+- [x] Markdown exporter (GFM fences, links, image paths).
+- [x] HTML exporter (inline styles, syntax-highlight ready blocks, print-friendly markup).
+- [x] Shared slug + file naming utility (`{date}_{title}`, `{id}_{title}` templates).
+- [x] Collision handling for duplicate titles.
 
 Deliverable:
 - For one conversation, all selected formats are generated with deterministic file paths.
