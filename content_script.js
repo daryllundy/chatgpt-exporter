@@ -6,15 +6,37 @@ import { fetchConversationImages } from "./lib/images.js";
 import { packageZip } from "./lib/exporter/packager.js";
 import { formatDate } from "./lib/naming.js";
 
+let activeRun = null;
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message !== "object") {
     return false;
   }
 
   if (message.type === MsgType.RUN_EXPORT) {
+    if (activeRun && !activeRun.cancelled) {
+      sendResponse({ ok: false, message: "An export is already running" });
+      return true;
+    }
+
+    const runToken = { cancelled: false };
+    activeRun = runToken;
     logger.info("RUN_EXPORT received in content script", message.payload);
-    void executeExport(message.payload);
+    void executeExport(message.payload, runToken).finally(() => {
+      if (activeRun === runToken) {
+        activeRun = null;
+      }
+    });
     sendResponse({ ok: true, message: "Export runner started" });
+    return true;
+  }
+
+  if (message.type === MsgType.STOP_EXPORT) {
+    if (activeRun) {
+      activeRun.cancelled = true;
+      logger.info("STOP_EXPORT received in content script");
+    }
+    sendResponse({ ok: true });
     return true;
   }
 
@@ -38,14 +60,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  *
  * @param {import("./lib/messages.js").StartExportPayload} payload
  */
-async function executeExport(payload) {
+async function executeExport(payload, runToken) {
   try {
+    throwIfCancelled(runToken);
     sendProgress({ phase: "init", completed: 0, total: 0, etaSeconds: null });
 
     // 1. Determine conversation IDs ─────────────────────────────────────────
     let explicitIds = payload.conversationIds;
     if (payload.scope === "selected" && (!explicitIds || explicitIds.length === 0)) {
       explicitIds = await promptConversationSelection();
+      throwIfCancelled(runToken);
       if (explicitIds.length === 0) {
         sendProgress({ phase: "done", completed: 0, total: 0, etaSeconds: 0,
           message: "No conversations selected." });
@@ -62,6 +86,7 @@ async function executeExport(payload) {
     );
 
     const total = metas.length;
+    throwIfCancelled(runToken);
     logger.info(`Discovered ${total} conversation(s)`);
     sendProgress({ phase: "discovering", completed: 0, total, etaSeconds: null });
 
@@ -74,6 +99,7 @@ async function executeExport(payload) {
 
     // 2. Load resume state to skip already-completed conversations ──────────
     const rsResp = await chrome.runtime.sendMessage({ type: MsgType.GET_RESUME_STATE });
+    throwIfCancelled(runToken);
     const completedIds = new Set(rsResp?.resumeState?.completedIds ?? []);
 
     // 3. Fetch + normalize each conversation ────────────────────────────────
@@ -84,6 +110,7 @@ async function executeExport(payload) {
     const startTime = Date.now();
 
     for (let i = 0; i < metas.length; i++) {
+      throwIfCancelled(runToken);
       const meta = metas[i];
 
       if (completedIds.has(meta.id)) {
@@ -93,7 +120,9 @@ async function executeExport(payload) {
 
       try {
         const conversation = await fetchAndNormalizeConversation(meta.id);
+        throwIfCancelled(runToken);
         const images = await fetchConversationImages(conversation);
+        throwIfCancelled(runToken);
         records.push({ conversation, images });
 
         // Checkpoint: notify service worker of this completion
@@ -124,6 +153,7 @@ async function executeExport(payload) {
     sendProgress({ phase: "packaging", completed: 0, total: records.length, etaSeconds: null });
 
     const prefs = await getPreferences();
+    throwIfCancelled(runToken);
     const blob = await packageZip(
       records,
       payload.formats,
@@ -134,6 +164,7 @@ async function executeExport(payload) {
 
     // 5. Trigger download via service worker ─────────────────────────────────
     const dataUrl = await blobToDataUrl(blob);
+    throwIfCancelled(runToken);
     const fileName = `chatgpt-export_${formatDate(Date.now() / 1000)}.zip`;
 
     await chrome.runtime.sendMessage({
@@ -143,6 +174,16 @@ async function executeExport(payload) {
 
     sendProgress({ phase: "done", completed: total, total, etaSeconds: 0 });
   } catch (err) {
+    if (runToken?.cancelled) {
+      sendProgress({
+        phase: "error",
+        completed: 0,
+        total: 0,
+        etaSeconds: null,
+        message: "Export cancelled."
+      });
+      return;
+    }
     logger.error("executeExport failed", err);
     sendProgress({
       phase: "error", completed: 0, total: 0, etaSeconds: null,
@@ -184,4 +225,10 @@ function blobToDataUrl(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+function throwIfCancelled(runToken) {
+  if (runToken?.cancelled) {
+    throw new Error("Export cancelled");
+  }
 }

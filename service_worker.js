@@ -51,8 +51,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === MsgType.CANCEL_EXPORT) {
     logger.info("CANCEL_EXPORT received");
-    void chrome.storage.local
-      .remove(STATE_KEYS.RESUME)
+    void handleCancelExport(sender)
       .then(() => sendResponse({ ok: true }))
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
@@ -189,4 +188,23 @@ async function handleStartExport(payload, sender) {
     type: MsgType.RUN_EXPORT,
     payload
   });
+}
+
+/**
+ * Cancel any active export run and clear resume state.
+ * @param {chrome.runtime.MessageSender} sender
+ */
+async function handleCancelExport(sender) {
+  await chrome.storage.local.remove(STATE_KEYS.RESUME);
+
+  let tabId = sender?.tab?.id;
+  if (!tabId) {
+    const [tab] = await chrome.tabs.query({ active: true, url: "https://chatgpt.com/*" });
+    tabId = tab?.id;
+  }
+
+  if (tabId) {
+    // Best-effort signal to stop the currently running content-script pipeline.
+    await chrome.tabs.sendMessage(tabId, { type: MsgType.STOP_EXPORT }).catch(() => {});
+  }
 }
