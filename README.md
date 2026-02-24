@@ -103,6 +103,12 @@ Run smoke tests for naming + exporters:
 node tests/smoke-exporters.mjs
 ```
 
+Run exporter performance smoke test:
+
+```bash
+node tests/perf-smoke.mjs
+```
+
 Run extension security/policy checks:
 
 ```bash
