@@ -105,26 +105,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const progressPayload = message.payload || {};
     logger.debug("Relaying EXPORT_PROGRESS", progressPayload);
 
-    // Checkpoint completedIds into resume state when provided
-    if (progressPayload.allIds || progressPayload.phase === "exporting") {
-      void chrome.storage.local.get([STATE_KEYS.RESUME]).then((result) => {
-        const state = result[STATE_KEYS.RESUME];
-        if (!state) return;
-        if (progressPayload.allIds) {
-          state.allIds = progressPayload.allIds;
+    void chrome.storage.local.get([STATE_KEYS.RESUME]).then((result) => {
+      const state = result[STATE_KEYS.RESUME];
+      if (!state) return;
+
+      if (progressPayload.allIds) {
+        state.allIds = progressPayload.allIds;
+      }
+
+      if (progressPayload.phase === "exporting" || progressPayload.phase === "packaging") {
+        state.status = "in_progress";
+      }
+
+      if (progressPayload.phase === "exporting" && progressPayload.lastCompletedId) {
+        if (!Array.isArray(state.completedIds)) state.completedIds = [];
+        if (!state.completedIds.includes(progressPayload.lastCompletedId)) {
+          state.completedIds.push(progressPayload.lastCompletedId);
         }
-        if (progressPayload.phase === "exporting" && progressPayload.lastCompletedId) {
-          if (!Array.isArray(state.completedIds)) state.completedIds = [];
-          if (!state.completedIds.includes(progressPayload.lastCompletedId)) {
-            state.completedIds.push(progressPayload.lastCompletedId);
-          }
-        }
-        if (progressPayload.phase === "done") {
-          state.status = "done";
-        }
-        return chrome.storage.local.set({ [STATE_KEYS.RESUME]: state });
-      });
-    }
+      }
+
+      if (progressPayload.phase === "done") {
+        state.status = "done";
+      }
+
+      return chrome.storage.local.set({ [STATE_KEYS.RESUME]: state });
+    });
 
     // Relay to popup (may be closed — ignore errors)
     void chrome.runtime.sendMessage(message).catch(() => {});
