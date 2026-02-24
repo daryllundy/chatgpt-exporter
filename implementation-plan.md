@@ -37,10 +37,10 @@ Deliverable:
 - Service worker receives deterministic conversation ID list for each export scope.
 
 ### 3. Normalized Data Model (Milestone: one canonical schema)
-- [ ] Define internal `NormalizedConversation` schema.
-- [ ] Implement extraction pipeline from page state/API responses with DOM fallback.
-- [ ] Parse message roles, timestamps, code blocks, links, and images.
-- [ ] Add schema validation and fallback defaults.
+- [x] Define internal `NormalizedConversation` schema.
+- [x] Implement extraction pipeline from page state/API responses with DOM fallback.
+- [x] Parse message roles, timestamps, code blocks, links, and images.
+- [x] Add schema validation and fallback defaults.
 
 Deliverable:
 - Each conversation transforms into a single canonical object used by all exporters.
