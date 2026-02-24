@@ -35,6 +35,7 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "lib/jszip.min.js",
         "lib/highlight.min.js"
       ],
       "matches": [
