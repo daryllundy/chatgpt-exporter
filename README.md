@@ -97,6 +97,12 @@ manifest.json (MV3)
 
 No build step required — the extension uses native ES modules. Load unpacked and reload after edits.
 
+Run smoke tests for naming + exporters:
+
+```bash
+node tests/smoke-exporters.mjs
+```
+
 To enable verbose debug logging, open the DevTools console for the service worker or content script and run:
 
 ```javascript
