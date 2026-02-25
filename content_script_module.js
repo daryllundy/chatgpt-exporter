@@ -1,7 +1,7 @@
 import { MsgType } from "./lib/messages.js";
 import { logger } from "./lib/logger.js";
 import { discoverConversations, promptConversationSelection } from "./lib/discovery.js";
-import { fetchAndNormalizeConversation } from "./lib/schema.js";
+import { fetchAndNormalizeConversation, extractConversationFromActiveDom } from "./lib/schema.js";
 import { fetchConversationImages } from "./lib/images.js";
 import { packageZip } from "./lib/exporter/packager.js";
 import { formatDate } from "./lib/naming.js";
@@ -66,6 +66,9 @@ if (!window.__cgptExporterModuleReady) {
  * @param {import("./lib/messages.js").StartExportPayload} payload
  */
 async function executeExport(payload, runToken) {
+  const originalConversationId = getCurrentConversationIdFromUrl();
+  const enableNavigationFallback = payload.scope === "selected";
+
   try {
     throwIfCancelled(runToken);
     sendProgress({ phase: "init", completed: 0, total: 0, etaSeconds: null });
@@ -124,7 +127,7 @@ async function executeExport(payload, runToken) {
       }
 
       try {
-        const conversation = await fetchAndNormalizeConversation(meta.id);
+        const conversation = await loadConversationForExport(meta.id, runToken, enableNavigationFallback);
         throwIfCancelled(runToken);
         const images = await fetchConversationImages(conversation);
         throwIfCancelled(runToken);
@@ -194,6 +197,10 @@ async function executeExport(payload, runToken) {
       phase: "error", completed: 0, total: 0, etaSeconds: null,
       message: err instanceof Error ? err.message : String(err)
     });
+  } finally {
+    if (enableNavigationFallback && originalConversationId) {
+      void navigateToConversation(originalConversationId, null).catch(() => {});
+    }
   }
 }
 
@@ -236,4 +243,88 @@ function throwIfCancelled(runToken) {
   if (runToken?.cancelled) {
     throw new Error("Export cancelled");
   }
+}
+
+/**
+ * Load a conversation for export. Primary source is API; for selected chats we
+ * also support a navigation+DOM fallback when API lookup fails.
+ *
+ * @param {string} id
+ * @param {{cancelled:boolean}} runToken
+ * @param {boolean} allowNavigationFallback
+ */
+async function loadConversationForExport(id, runToken, allowNavigationFallback) {
+  try {
+    return await fetchAndNormalizeConversation(id);
+  } catch (err) {
+    if (!allowNavigationFallback) {
+      throw err;
+    }
+
+    logger.warn(`API load failed for ${id}; trying navigation fallback`, err);
+    await navigateToConversation(id, runToken);
+    throwIfCancelled(runToken);
+    const conversation = extractConversationFromActiveDom(id);
+    if (!conversation.messages || conversation.messages.length === 0) {
+      throw new Error(`Navigation fallback produced no messages for id=${id}`);
+    }
+    return conversation;
+  }
+}
+
+/**
+ * Navigate to a conversation via the left sidebar link and wait for render.
+ * Requires the target chat link to be currently present in the DOM.
+ *
+ * @param {string} id
+ * @param {{cancelled:boolean}|null} runToken
+ */
+async function navigateToConversation(id, runToken) {
+  const escapedId = cssAttributeEscape(id);
+  const selector = `a[href="/c/${escapedId}"], a[href$="/c/${escapedId}"]`;
+  const link = /** @type {HTMLAnchorElement|null} */ (document.querySelector(selector));
+  if (!link) {
+    throw new Error(`Sidebar link not found for conversation id=${id}`);
+  }
+
+  link.click();
+
+  await waitForCondition(
+    () => getCurrentConversationIdFromUrl() === id,
+    10000,
+    100,
+    runToken,
+    `Timed out navigating to /c/${id}`
+  );
+
+  await waitForCondition(
+    () => document.querySelectorAll("[data-message-author-role]").length > 0,
+    10000,
+    100,
+    runToken,
+    `Timed out waiting for rendered messages for id=${id}`
+  );
+}
+
+function getCurrentConversationIdFromUrl() {
+  const match = window.location.pathname.match(/\/c\/([a-z0-9-]+)/i);
+  return match ? match[1] : null;
+}
+
+function cssAttributeEscape(value) {
+  return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
+
+async function waitForCondition(predicate, timeoutMs, intervalMs, runToken, timeoutMessage) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    throwIfCancelled(runToken);
+    if (predicate()) return;
+    await sleep(intervalMs);
+  }
+  throw new Error(timeoutMessage);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
