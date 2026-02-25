@@ -280,14 +280,13 @@ async function loadConversationForExport(id, runToken, allowNavigationFallback) 
  * @param {{cancelled:boolean}|null} runToken
  */
 async function navigateToConversation(id, runToken) {
-  const escapedId = cssAttributeEscape(id);
-  const selector = `a[href="/c/${escapedId}"], a[href$="/c/${escapedId}"]`;
-  const link = /** @type {HTMLAnchorElement|null} */ (document.querySelector(selector));
-  if (!link) {
-    throw new Error(`Sidebar link not found for conversation id=${id}`);
+  const link = findConversationLinkById(id);
+  if (link) {
+    link.click();
+  } else {
+    // Fallback for virtualized/variant sidebar URLs: navigate directly.
+    window.location.assign(`/c/${id}`);
   }
-
-  link.click();
 
   await waitForCondition(
     () => getCurrentConversationIdFromUrl() === id,
@@ -311,8 +310,16 @@ function getCurrentConversationIdFromUrl() {
   return match ? match[1] : null;
 }
 
-function cssAttributeEscape(value) {
-  return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+function findConversationLinkById(id) {
+  const links = Array.from(document.querySelectorAll('a[href*="/c/"]'));
+  for (const link of links) {
+    const href = link.getAttribute("href") || "";
+    const match = href.match(/\/c\/([a-z0-9-]+)/i);
+    if (match && match[1] === id) {
+      return /** @type {HTMLAnchorElement} */ (link);
+    }
+  }
+  return null;
 }
 
 async function waitForCondition(predicate, timeoutMs, intervalMs, runToken, timeoutMessage) {
