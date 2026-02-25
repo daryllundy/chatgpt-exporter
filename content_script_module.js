@@ -68,6 +68,7 @@ if (!window.__cgptExporterModuleReady) {
 async function executeExport(payload, runToken) {
   const originalConversationId = getCurrentConversationIdFromUrl();
   const enableNavigationFallback = payload.scope === "selected";
+  let preferNavigationDomMode = false;
 
   try {
     throwIfCancelled(runToken);
@@ -127,7 +128,16 @@ async function executeExport(payload, runToken) {
       }
 
       try {
-        const conversation = await loadConversationForExport(meta.id, runToken, enableNavigationFallback);
+        const result = await loadConversationForExport(
+          meta.id,
+          runToken,
+          enableNavigationFallback,
+          preferNavigationDomMode
+        );
+        if (result.apiFailed) {
+          preferNavigationDomMode = true;
+        }
+        const conversation = result.conversation;
         throwIfCancelled(runToken);
         const images = await fetchConversationImages(conversation);
         throwIfCancelled(runToken);
@@ -253,9 +263,20 @@ function throwIfCancelled(runToken) {
  * @param {{cancelled:boolean}} runToken
  * @param {boolean} allowNavigationFallback
  */
-async function loadConversationForExport(id, runToken, allowNavigationFallback) {
+async function loadConversationForExport(id, runToken, allowNavigationFallback, preferNavigationDomMode) {
+  if (allowNavigationFallback && preferNavigationDomMode) {
+    await navigateToConversation(id, runToken);
+    throwIfCancelled(runToken);
+    const conversation = extractConversationFromActiveDom(id);
+    if (!conversation.messages || conversation.messages.length === 0) {
+      throw new Error(`Navigation fallback produced no messages for id=${id}`);
+    }
+    return { conversation, apiFailed: false };
+  }
+
   try {
-    return await fetchAndNormalizeConversation(id);
+    const conversation = await fetchAndNormalizeConversation(id);
+    return { conversation, apiFailed: false };
   } catch (err) {
     if (!allowNavigationFallback) {
       throw err;
@@ -268,7 +289,10 @@ async function loadConversationForExport(id, runToken, allowNavigationFallback) 
     if (!conversation.messages || conversation.messages.length === 0) {
       throw new Error(`Navigation fallback produced no messages for id=${id}`);
     }
-    return conversation;
+    return {
+      conversation,
+      apiFailed: isApi404Error(err)
+    };
   }
 }
 
@@ -334,4 +358,9 @@ async function waitForCondition(predicate, timeoutMs, intervalMs, runToken, time
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isApi404Error(err) {
+  if (!(err instanceof Error)) return false;
+  return err.message.includes("Conversation API returned 404");
 }
