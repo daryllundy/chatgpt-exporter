@@ -5,6 +5,7 @@ const STATE_KEYS = {
   PREFERENCES: "preferences",
   RESUME: "resumeState"
 };
+const CONTENT_SCRIPT_READY_WAITERS = new Map();
 
 chrome.runtime.onInstalled.addListener(async () => {
   const current = await chrome.storage.local.get([STATE_KEYS.PREFERENCES]);
@@ -30,6 +31,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       from: "service_worker",
       timestamp: Date.now()
     });
+    return true;
+  }
+
+  if (message.type === MsgType.CONTENT_SCRIPT_READY) {
+    const tabId = sender?.tab?.id;
+    if (tabId != null) {
+      resolveContentScriptWaiters(tabId);
+    }
+    sendResponse({ ok: true });
     return true;
   }
 
@@ -189,10 +199,7 @@ async function handleStartExport(payload, sender) {
     throw new Error("No active chatgpt.com tab found — open ChatGPT first.");
   }
 
-  await chrome.tabs.sendMessage(tabId, {
-    type: MsgType.RUN_EXPORT,
-    payload
-  });
+  await sendRunExportMessage(tabId, payload);
 }
 
 /**
@@ -211,5 +218,104 @@ async function handleCancelExport(sender) {
   if (tabId) {
     // Best-effort signal to stop the currently running content-script pipeline.
     await chrome.tabs.sendMessage(tabId, { type: MsgType.STOP_EXPORT }).catch(() => {});
+  }
+}
+
+/**
+ * Ensure the content script is present in the tab before dispatching RUN_EXPORT.
+ * This handles the common case where the tab was opened before extension install/update.
+ *
+ * @param {number} tabId
+ * @param {import("./lib/messages.js").StartExportPayload} payload
+ */
+async function sendRunExportMessage(tabId, payload) {
+  try {
+    await chrome.tabs.sendMessage(tabId, {
+      type: MsgType.RUN_EXPORT,
+      payload
+    });
+    return;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (!msg.includes("Receiving end does not exist")) {
+      throw error;
+    }
+  }
+
+  logger.warn("Content script missing in tab, injecting and retrying", { tabId });
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ["content_script_loader.js"]
+  });
+  const isReady = await waitForContentScriptReady(tabId, 3000);
+  if (!isReady) {
+    throw new Error("Content script failed to initialize in tab. Reload ChatGPT tab and try again.");
+  }
+
+  await chrome.tabs.sendMessage(tabId, {
+    type: MsgType.RUN_EXPORT,
+    payload
+  });
+}
+
+/**
+ * Wait for content script initialization.
+ * Primary signal: CONTENT_SCRIPT_READY message.
+ * Fallback: poll PAGE_CONTEXT_STATUS in case message races are missed.
+ *
+ * @param {number} tabId
+ * @param {number} timeoutMs
+ * @returns {Promise<boolean>}
+ */
+function waitForContentScriptReady(tabId, timeoutMs) {
+  return new Promise((resolve) => {
+    let finished = false;
+    const done = (value) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeoutId);
+      clearInterval(pollId);
+      removeContentScriptWaiter(tabId, onReady);
+      resolve(value);
+    };
+
+    const onReady = () => done(true);
+    addContentScriptWaiter(tabId, onReady);
+
+    const timeoutId = setTimeout(() => done(false), timeoutMs);
+    const pollId = setInterval(() => {
+      void chrome.tabs
+        .sendMessage(tabId, { type: MsgType.PAGE_CONTEXT_STATUS })
+        .then((resp) => {
+          if (resp?.ok && resp?.ready) {
+            done(true);
+          }
+        })
+        .catch(() => {});
+    }, 100);
+  });
+}
+
+function addContentScriptWaiter(tabId, callback) {
+  const list = CONTENT_SCRIPT_READY_WAITERS.get(tabId) || [];
+  list.push(callback);
+  CONTENT_SCRIPT_READY_WAITERS.set(tabId, list);
+}
+
+function removeContentScriptWaiter(tabId, callback) {
+  const list = CONTENT_SCRIPT_READY_WAITERS.get(tabId) || [];
+  const next = list.filter((item) => item !== callback);
+  if (next.length > 0) {
+    CONTENT_SCRIPT_READY_WAITERS.set(tabId, next);
+  } else {
+    CONTENT_SCRIPT_READY_WAITERS.delete(tabId);
+  }
+}
+
+function resolveContentScriptWaiters(tabId) {
+  const list = CONTENT_SCRIPT_READY_WAITERS.get(tabId) || [];
+  CONTENT_SCRIPT_READY_WAITERS.delete(tabId);
+  for (const callback of list) {
+    callback();
   }
 }

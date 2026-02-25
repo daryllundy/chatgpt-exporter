@@ -7,50 +7,55 @@ import { packageZip } from "./lib/exporter/packager.js";
 import { formatDate } from "./lib/naming.js";
 
 let activeRun = null;
+if (!window.__cgptExporterModuleReady) {
+  window.__cgptExporterModuleReady = true;
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || typeof message !== "object") {
-    return false;
-  }
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (!message || typeof message !== "object") {
+      return false;
+    }
 
-  if (message.type === MsgType.RUN_EXPORT) {
-    if (activeRun && !activeRun.cancelled) {
-      sendResponse({ ok: false, message: "An export is already running" });
+    if (message.type === MsgType.RUN_EXPORT) {
+      if (activeRun && !activeRun.cancelled) {
+        sendResponse({ ok: false, message: "An export is already running" });
+        return true;
+      }
+
+      const runToken = { cancelled: false };
+      activeRun = runToken;
+      logger.info("RUN_EXPORT received in content script", message.payload);
+      void executeExport(message.payload, runToken).finally(() => {
+        if (activeRun === runToken) {
+          activeRun = null;
+        }
+      });
+      sendResponse({ ok: true, message: "Export runner started" });
       return true;
     }
 
-    const runToken = { cancelled: false };
-    activeRun = runToken;
-    logger.info("RUN_EXPORT received in content script", message.payload);
-    void executeExport(message.payload, runToken).finally(() => {
-      if (activeRun === runToken) {
-        activeRun = null;
+    if (message.type === MsgType.STOP_EXPORT) {
+      if (activeRun) {
+        activeRun.cancelled = true;
+        logger.info("STOP_EXPORT received in content script");
       }
-    });
-    sendResponse({ ok: true, message: "Export runner started" });
-    return true;
-  }
-
-  if (message.type === MsgType.STOP_EXPORT) {
-    if (activeRun) {
-      activeRun.cancelled = true;
-      logger.info("STOP_EXPORT received in content script");
+      sendResponse({ ok: true });
+      return true;
     }
-    sendResponse({ ok: true });
-    return true;
-  }
 
-  if (message.type === MsgType.PAGE_CONTEXT_STATUS) {
-    sendResponse({
-      ok: true,
-      host: window.location.host,
-      ready: window.location.host === "chatgpt.com"
-    });
-    return true;
-  }
+    if (message.type === MsgType.PAGE_CONTEXT_STATUS) {
+      sendResponse({
+        ok: true,
+        host: window.location.host,
+        ready: window.location.host === "chatgpt.com"
+      });
+      return true;
+    }
 
-  return false;
-});
+    return false;
+  });
+
+  void chrome.runtime.sendMessage({ type: MsgType.CONTENT_SCRIPT_READY }).catch(() => {});
+}
 
 // ─── Main Export Pipeline ─────────────────────────────────────────────────────
 

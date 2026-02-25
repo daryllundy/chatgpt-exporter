@@ -27,7 +27,7 @@
         "https://chatgpt.com/*"
       ],
       "js": [
-        "content_script.js"
+        "content_script_loader.js"
       ],
       "run_at": "document_idle"
     }
@@ -35,6 +35,9 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "content_script_module.js",
+        "lib/*.js",
+        "lib/exporter/*.js",
         "lib/jszip.min.js",
         "lib/highlight.min.js"
       ],

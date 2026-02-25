@@ -30,6 +30,17 @@ A free, open-source Chrome extension (Manifest V3) that exports ChatGPT conversa
 5. Click **Export & Download ZIP**.
 6. The ZIP file will be saved to your default downloads folder.
 
+### Troubleshooting
+
+If export fails right after updating/reloading the extension:
+1. Reload the extension in `chrome://extensions`.
+2. Refresh the `chatgpt.com` tab.
+3. Retry export.
+
+This ensures the loader and module content scripts are attached to the active tab.
+
+If **Selected Chats** shows no items, the extension falls back to scraping currently visible left-sidebar chats when account-history API access is blocked. Expand/load the sidebar chat list, then retry.
+
 ### Resuming an interrupted export
 
 If the popup is closed or the browser restarted during a large export, reopening the popup will show a **Resume** banner. Click **Resume** to continue from where it left off, or **Start fresh** to discard the previous state and begin anew.
@@ -62,7 +73,8 @@ chatgpt-export_YYYY-MM-DD/
 
 ```
 manifest.json (MV3)
-├── content_script.js        → export pipeline: discovery, fetch, normalize, package
+├── content_script_loader.js → classic loader shim; dynamically imports module content script
+├── content_script_module.js → export pipeline: discovery, fetch, normalize, package
 ├── service_worker.js        → orchestrates jobs, manages resume state, triggers download
 ├── popup/
 │   ├── popup.html / .css    → UI
